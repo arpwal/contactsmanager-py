@@ -4,15 +4,16 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="contactsmanager-py",
+    name="contactsmanager",
     version="0.1.0",
     author="Arpit Agarwal",
-    author_email="arpit@contactsmanager.com",  # Please update this
+    author_email="arpit@example.com",  # Please update this
     description="Python SDK for ContactsManager API",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/arpwal/contactsmanager-py",
-    packages=find_packages(),
+    package_dir={"": "contactsmanager"},
+    packages=find_packages(where="contactsmanager"),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",

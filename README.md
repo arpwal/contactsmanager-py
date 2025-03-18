@@ -5,16 +5,16 @@ A Python SDK for the ContactsManager API that handles authentication and token g
 ## Installation
 
 ```bash
-pip install contactsmanager-py
+pip install contactsmanager
 ```
 
 ## Usage
 
 ```python
-from contactsmanager_py import ContactsManagerClient
+from contactsmanager import ContactsManager
 
 # Initialize the client
-client = ContactsManagerClient(
+client = ContactsManager(
     api_key="your_api_key",
     api_secret="your_api_secret",
     org_id="your_org_id"

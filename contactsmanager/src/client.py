@@ -3,7 +3,7 @@ import time
 import uuid
 from typing import Dict, Optional, Union
 
-class ContactsManagerClient:
+class ContactsManager:
     def __init__(self, api_key: str, api_secret: str, org_id: str):
         """
         Initialize the ContactsManager SDK client.
