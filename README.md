@@ -57,7 +57,7 @@ token_response = client.generate_token(
 
 ## Requirements
 
-- Python 3.7+
+- Python 3.8+
 - PyJWT>=2.0.0
 
 ## Development
