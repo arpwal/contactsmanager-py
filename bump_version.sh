@@ -17,14 +17,19 @@ if [ ! -f "$INIT_FILE" ]; then
     exit 1
 fi
 
-# Get current version
-CURRENT_VERSION=$(grep -oP "__version__ = ['\"]\\K[^'\"]*" $INIT_FILE)
+# Get current version - using a more portable grep approach
+CURRENT_VERSION=$(grep "__version__" "$INIT_FILE" | sed -E "s/__version__ = ['\"]([^'\"]*)['\"].*/\1/")
 echo "Current version: $CURRENT_VERSION"
 echo "New version: $NEW_VERSION"
 
-# Update the version in the file
-sed -i.bak "s/__version__ = ['\"]$CURRENT_VERSION['\"]/__version__ = '$NEW_VERSION'/" $INIT_FILE
-rm -f "${INIT_FILE}.bak"
+# Update the version in the file - works on both macOS and Linux
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    sed -i '' "s/__version__ = ['\"]$CURRENT_VERSION['\"]/__version__ = '$NEW_VERSION'/" "$INIT_FILE"
+else
+    # Linux and others
+    sed -i "s/__version__ = ['\"]$CURRENT_VERSION['\"]/__version__ = '$NEW_VERSION'/" "$INIT_FILE"
+fi
 
 echo "Version updated successfully!"
 echo "Don't forget to commit and push the changes:"
