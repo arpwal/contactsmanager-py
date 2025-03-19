@@ -8,6 +8,11 @@ on:
   pull_request:
     branches: [ main ]
 
+# Add global permissions for the workflow
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -77,16 +82,15 @@ jobs:
         VERSION=$(python -c "import os, re; file = open(os.path.join('contactsmanager', '__init__.py'), 'r'); content = file.read(); file.close(); print(re.search(r'__version__ = [\'\"](.*?)[\'\"]', content).group(1))")
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Current version: $VERSION"
-    - name: Create release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    # Using the newer release action instead of the deprecated one
+    - name: Create Release
+      uses: ncipollo/release-action@v1
       with:
-        tag_name: v${{ steps.get_version.outputs.version }}
-        release_name: Release v${{ steps.get_version.outputs.version }}
+        tag: v${{ steps.get_version.outputs.version }}
+        name: Release v${{ steps.get_version.outputs.version }}
         draft: false
         prerelease: false
+        generateReleaseNotes: true
     - name: Build and publish
       env:
         TWINE_USERNAME: "__token__"
