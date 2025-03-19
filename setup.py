@@ -22,7 +22,7 @@ setup(
     long_description_content_type='text/markdown',
     author='Arpit Agarwal',
     author_email='your-email@example.com',  # Replace with your email
-    url='https://github.com/arpwal/contactmanager',
+    url='https://github.com/arpwal/contactsmanager-py',
     packages=find_packages(exclude=['tests*']),
     install_requires=[
         'PyJWT>=2.0.0,<3.0.0',
