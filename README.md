@@ -76,6 +76,37 @@ pip install -e ".[dev]"
 pytest
 ```
 
+### Releasing new versions
+
+The SDK uses an automated process for releases:
+
+1. Update the version in `contactsmanager/__init__.py` using the provided script:
+   ```bash
+   ./bump_version.sh 0.1.1
+   ```
+
+2. Commit and push the change to the main branch:
+   ```bash
+   git add contactsmanager/__init__.py
+   git commit -m "Bump version to 0.1.1"
+   git push origin main
+   ```
+
+3. The GitHub Actions workflow will:
+   - Run all tests across multiple Python versions
+   - Create a new GitHub release with the version tag
+   - Build and publish the package to PyPI
+
+Alternatively, you can manually create a new release by:
+
+1. Creating and pushing a git tag:
+   ```bash
+   git tag -a v0.1.1 -m "Release version 0.1.1"
+   git push origin v0.1.1
+   ```
+
+2. The GitHub Actions workflow will handle the rest
+
 ## License
 
 MIT License 
