@@ -56,10 +56,28 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install -e .
+      - name: Debug environment
+        run: |
+          echo "Checking for TEST_CONFIG secret..."
+          if [ -n "${{ secrets.TEST_CONFIG }}" ]; then
+            echo "TEST_CONFIG secret exists"
+          else
+            echo "TEST_CONFIG secret is empty or not set"
+          fi
+      - name: Create test config file
+        # Create a test config file from the secret
+        # This is an alternative approach to using environment variables
+        run: |
+          echo '${{ secrets.TEST_CONFIG }}' > test_config.json
+          echo "Created test_config.json with length: $(wc -c < test_config.json)"
       - name: Run integration tests
         env:
-          TEST_CONFIG: ${{ secrets.TEST_CONFIG }}
+          # Pass the secret directly as an environment variable
+          TEST_CONFIG: "${{ secrets.TEST_CONFIG }}"
         run: |
+          # Echo environment variable length for debugging
+          echo "TEST_CONFIG environment variable length: ${#TEST_CONFIG}"
+          # Run the tests
           python -m contactsmanager.integration_tests.run_tests
 
   publish-on-tag:
