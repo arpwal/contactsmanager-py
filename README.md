@@ -1,10 +1,10 @@
 # ContactsManager Python SDK
 
 [![PyPI version](https://img.shields.io/pypi/v/contactsmanager.svg)](https://pypi.org/project/contactsmanager/)
-[![Build Status](https://github.com/arpwal/contactmanager/actions/workflows/python-sdk.yml/badge.svg)](https://github.com/arpwal/contactmanager/actions/workflows/python-sdk.yml)
+[![Build Status](https://github.com/arpwal/contactsmanager-py/actions/workflows/python-package.yml/badge.svg)](https://github.com/arpwal/contactsmanager-py/actions/workflows/python-package.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)
-[![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/arpwal/contactmanager)
+[![Test Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)](https://github.com/arpwal/contactsmanager-py)
 
 A Python SDK for the ContactsManager API that handles authentication and token generation.
 
@@ -72,8 +72,8 @@ token_response = client.generate_token(
 
 ```bash
 # Clone the repository
-git clone https://github.com/arpwal/contactmanager.git
-cd contactmanager/sdk/py
+git clone https://github.com/arpwal/contactsmanager-py.git
+cd contactsmanager-py
 
 # Install development dependencies
 pip install -e ".[dev]"
@@ -142,3 +142,9 @@ Alternatively, you can manually create a new release by:
 ## License
 
 MIT License
+
+## About ContactsManager.io
+
+[ContactsManager.io](https://www.contactsmanager.io) provides a platform for app developers to integrate social features into their applications. Our SDK ensures that contact information stays with users only, with multi-layer encryption and military-grade security to prevent spam and data misuse.
+
+For more information and documentation, visit [contactsmanager.io](https://www.contactsmanager.io).
