@@ -34,7 +34,10 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           pip install -e .
       - name: Test with pytest
+        env:
+          TEST_CONFIG: "${{ secrets.TEST_CONFIG }}"
         run: |
+          echo '${{ secrets.TEST_CONFIG }}' > test_config.json
           pytest --cov=contactsmanager
 
   integration-test:
