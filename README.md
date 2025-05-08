@@ -76,16 +76,40 @@ pip install -e ".[dev]"
 pytest
 ```
 
+### Running Integration Tests
+
+Integration tests validate the SDK against real-world scenarios, including server-side API key validation.
+
+#### Local Setup
+
+1. Create a `.env` file with your test configuration:
+
+   ```bash
+   # Copy the template file
+   cp env.template .env
+
+   # Edit the .env file with your credentials
+   # The configuration is a JSON string in the TEST_CONFIG variable
+   TEST_CONFIG='{"api_key":"your_api_key","api_secret":"your_api_secret","org_id":"your_org_id","api_base_url":"https://api.contactsmanager.io"}'
+   ```
+
+2. Run the integration tests:
+   ```bash
+   ./run_integration_tests.sh
+   ```
+
 ### Releasing new versions
 
 The SDK uses an automated process for releases:
 
 1. Update the version in `contactsmanager/__init__.py` using the provided script:
+
    ```bash
    ./bump_version.sh 0.1.1
    ```
 
 2. Commit and push the change to the main branch:
+
    ```bash
    git add contactsmanager/__init__.py
    git commit -m "Bump version to 0.1.1"
@@ -94,12 +118,14 @@ The SDK uses an automated process for releases:
 
 3. The GitHub Actions workflow will:
    - Run all tests across multiple Python versions
+   - Run integration tests
    - Create a new GitHub release with the version tag
    - Build and publish the package to PyPI
 
 Alternatively, you can manually create a new release by:
 
 1. Creating and pushing a git tag:
+
    ```bash
    git tag -a v0.1.1 -m "Release version 0.1.1"
    git push origin v0.1.1
@@ -109,4 +135,4 @@ Alternatively, you can manually create a new release by:
 
 ## License
 
-MIT License 
+MIT License

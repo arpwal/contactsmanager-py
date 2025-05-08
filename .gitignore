@@ -34,4 +34,8 @@ ENV/
 # Distribution
 dist/
 build/
-*.egg-info/ 
+*.egg-info/
+
+# Integration tests env file
+.env
+contactsmanager/integration_tests/test_config.json
