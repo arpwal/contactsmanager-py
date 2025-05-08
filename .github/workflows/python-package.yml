@@ -1,6 +1,17 @@
 name: Python Package
 
 on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
   push:
     branches: [main]
     tags:
@@ -68,20 +79,127 @@ jobs:
             echo "TEST_CONFIG secret is empty or not set"
           fi
       - name: Create test config file
-        # Create a test config file from the secret
-        # This is an alternative approach to using environment variables
         run: |
           echo '${{ secrets.TEST_CONFIG }}' > test_config.json
           echo "Created test_config.json with length: $(wc -c < test_config.json)"
       - name: Run integration tests
         env:
-          # Pass the secret directly as an environment variable
           TEST_CONFIG: "${{ secrets.TEST_CONFIG }}"
         run: |
-          # Echo environment variable length for debugging
           echo "TEST_CONFIG environment variable length: ${#TEST_CONFIG}"
-          # Run the tests
           python -m contactsmanager.integration_tests.run_tests
+
+  publish:
+    needs: [test, integration-test]
+    runs-on: ubuntu-latest
+    # Only publish when triggered manually or when code is merged into main branch (not on PRs)
+    if: github.event_name == 'workflow_dispatch' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Set default version bump for push events
+        if: github.event_name == 'push'
+        run: |
+          echo "BUMP_TYPE=patch" >> $GITHUB_ENV
+      - name: Get current version
+        id: get_current_version
+        run: |
+          CURRENT_VERSION=$(python -c "import os, re; file = open(os.path.join('contactsmanager', '__init__.py'), 'r'); content = file.read(); file.close(); print(re.search(r'__version__ = [\'\"](.*?)[\'\"]', content).group(1))")
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "Current version: $CURRENT_VERSION"
+      - name: Calculate next version
+        id: calc_version
+        run: |
+          CURRENT_VERSION="${{ steps.get_current_version.outputs.current_version }}"
+          BUMP_TYPE="${{ github.event.inputs.version_bump || env.BUMP_TYPE }}"
+
+          # Parse the current version
+          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
+          MAJOR=${VERSION_PARTS[0]}
+          MINOR=${VERSION_PARTS[1]}
+          PATCH=${VERSION_PARTS[2]}
+
+          # Calculate new version based on bump type
+          if [ "$BUMP_TYPE" = "patch" ]; then
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH+1))"
+          elif [ "$BUMP_TYPE" = "minor" ]; then
+            NEW_VERSION="$MAJOR.$((MINOR+1)).0"
+          elif [ "$BUMP_TYPE" = "major" ]; then
+            NEW_VERSION="$((MAJOR+1)).0.0"
+          else
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH+1))"
+          fi
+
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "Next version will be: $NEW_VERSION"
+      - name: Check if version exists
+        id: version_check
+        run: |
+          NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
+          if pip index versions contactsmanager 2>/dev/null | grep -q "$NEW_VERSION"; then
+            echo "Version $NEW_VERSION already exists in PyPI registry"
+            echo "version_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version $NEW_VERSION is available"
+            echo "version_exists=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Update version
+        if: steps.version_check.outputs.version_exists != 'true'
+        run: |
+          NEW_VERSION="${{ steps.calc_version.outputs.new_version }}"
+          # Use the bump_version.sh script to update the version
+          chmod +x ./bump_version.sh
+          ./bump_version.sh $NEW_VERSION
+
+          # Commit and push the version change
+          git add contactsmanager/__init__.py
+          git commit -m "Bump version to $NEW_VERSION"
+          git push origin main
+
+          # Create and push a new tag
+          git tag "v$NEW_VERSION"
+          git push origin "v$NEW_VERSION"
+
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+      - name: Build and publish
+        if: steps.version_check.outputs.version_exists != 'true'
+        env:
+          TWINE_USERNAME: "__token__"
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m build
+          twine check dist/*
+          twine upload dist/*
+      - name: Create GitHub Release
+        if: steps.version_check.outputs.version_exists != 'true'
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ env.NEW_VERSION }}
+          name: Release v${{ env.NEW_VERSION }}
+          draft: false
+          prerelease: false
+          generateReleaseNotes: true
+      - name: Output Result
+        if: steps.version_check.outputs.version_exists != 'true'
+        run: echo "Successfully published version ${{ env.NEW_VERSION }} to PyPI and created GitHub Release"
+      - name: Version Already Exists
+        if: steps.version_check.outputs.version_exists == 'true'
+        run: |
+          echo "::warning::Version ${{ steps.calc_version.outputs.new_version }} already exists in PyPI registry. No changes were made."
 
   publish-on-tag:
     needs: [test, integration-test]
@@ -98,45 +216,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install build twine
-      - name: Build and publish
-        env:
-          TWINE_USERNAME: "__token__"
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          python -m build
-          twine check dist/*
-          twine upload dist/*
-
-  publish-on-main:
-    needs: [test, integration-test]
-    runs-on: ubuntu-latest
-    # Only publish when code is merged into main branch (not on PRs)
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
-      - name: Get current version
-        id: get_version
-        run: |
-          VERSION=$(python -c "import os, re; file = open(os.path.join('contactsmanager', '__init__.py'), 'r'); content = file.read(); file.close(); print(re.search(r'__version__ = [\'\"](.*?)[\'\"]', content).group(1))")
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "Current version: $VERSION"
-      # Using the newer release action instead of the deprecated one
-      - name: Create Release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: v${{ steps.get_version.outputs.version }}
-          name: Release v${{ steps.get_version.outputs.version }}
-          draft: false
-          prerelease: false
-          generateReleaseNotes: true
       - name: Build and publish
         env:
           TWINE_USERNAME: "__token__"
