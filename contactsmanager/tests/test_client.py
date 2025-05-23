@@ -6,6 +6,8 @@ import hmac
 import hashlib
 from unittest.mock import patch, MagicMock
 from contactsmanager import ContactsManagerClient
+from contactsmanager.types import UserInfo, DeviceInfo
+from contactsmanager.server_api import ServerAPIError
 
 
 class TestContactsManagerClient(unittest.TestCase):
@@ -100,6 +102,172 @@ class TestContactsManagerClient(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.client.generate_token(user_id="test_user", device_info="not_a_dict")
+
+    def test_create_user_with_valid_params(self):
+        """Test create_user with valid parameters."""
+        user_info = UserInfo(
+            user_id="test_user_123",
+            full_name="Test User",
+            email="test@example.com",
+            phone="+1234567890",
+        )
+        device_info = DeviceInfo(device_type="mobile", os="iOS", app_version="1.0.0")
+
+        # Mock the generate_token method
+        mock_token_data = {"token": "mock_token", "expires_at": 1234567890}
+
+        # Mock the ServerAPI and its create_user method
+        mock_response = MagicMock()
+        mock_response.status = "success"
+        mock_response.data = MagicMock()
+        mock_response.data.token = MagicMock()
+        mock_response.data.token.token = "new_token"
+        mock_response.data.token.expires_at = 1234567890
+        mock_response.data.user = MagicMock()
+        mock_response.data.created = True
+
+        with patch.object(
+            self.client, "generate_token", return_value=mock_token_data
+        ) as mock_gen_token, patch(
+            "contactsmanager.client.ServerAPI"
+        ) as mock_server_api_class:
+
+            mock_server_api = mock_server_api_class.return_value
+            mock_server_api.create_user.return_value = mock_response
+
+            result = self.client.create_user(user_info, device_info, 3600)
+
+            # Verify generate_token was called correctly
+            mock_gen_token.assert_called_once_with(
+                user_id="test_user_123",
+                device_info=device_info,
+                expiration_seconds=3600,
+            )
+
+            # Verify ServerAPI was initialized with the token
+            mock_server_api_class.assert_called_once_with("mock_token")
+
+            # Verify create_user was called on ServerAPI
+            mock_server_api.create_user.assert_called_once_with(
+                uid="test_user_123",
+                user_info=user_info,
+                device_info=device_info,
+                expiry_seconds=3600,
+            )
+
+            # Verify the result
+            self.assertEqual(result, mock_response)
+
+    def test_create_user_with_invalid_user_info(self):
+        """Test create_user with invalid user_info parameter."""
+        # Test with None
+        with self.assertRaises(ValueError) as context:
+            self.client.create_user(None)
+        self.assertIn(
+            "user_info is required and must be a UserInfo object",
+            str(context.exception),
+        )
+
+        # Test with wrong type
+        with self.assertRaises(ValueError) as context:
+            self.client.create_user({"user_id": "test"})
+        self.assertIn(
+            "user_info is required and must be a UserInfo object",
+            str(context.exception),
+        )
+
+    def test_create_user_server_api_error(self):
+        """Test create_user when ServerAPI raises an error."""
+        user_info = UserInfo(
+            user_id="test_user_123", full_name="Test User", email="test@example.com"
+        )
+
+        mock_token_data = {"token": "mock_token", "expires_at": 1234567890}
+
+        with patch.object(
+            self.client, "generate_token", return_value=mock_token_data
+        ), patch("contactsmanager.client.ServerAPI") as mock_server_api_class:
+
+            mock_server_api = mock_server_api_class.return_value
+            mock_server_api.create_user.side_effect = ServerAPIError("API Error", 500)
+
+            with self.assertRaises(ServerAPIError):
+                self.client.create_user(user_info)
+
+    def test_delete_user_with_valid_params(self):
+        """Test delete_user with valid parameters."""
+        uid = "test_user_123"
+
+        # Mock the generate_token method
+        mock_token_data = {"token": "mock_token", "expires_at": 1234567890}
+
+        # Mock the ServerAPI and its delete_user method
+        mock_response = MagicMock()
+        mock_response.status = "success"
+        mock_response.message = "User deleted successfully"
+        mock_response.data = MagicMock()
+        mock_response.data.deleted_contact_id = "contact_123"
+
+        with patch.object(
+            self.client, "generate_token", return_value=mock_token_data
+        ) as mock_gen_token, patch(
+            "contactsmanager.client.ServerAPI"
+        ) as mock_server_api_class:
+
+            mock_server_api = mock_server_api_class.return_value
+            mock_server_api.delete_user.return_value = mock_response
+
+            result = self.client.delete_user(uid)
+
+            # Verify generate_token was called correctly
+            mock_gen_token.assert_called_once_with(user_id=uid)
+
+            # Verify ServerAPI was initialized with the token
+            mock_server_api_class.assert_called_once_with("mock_token")
+
+            # Verify delete_user was called on ServerAPI
+            mock_server_api.delete_user.assert_called_once_with(uid=uid)
+
+            # Verify the result
+            self.assertEqual(result, mock_response)
+
+    def test_delete_user_with_invalid_params(self):
+        """Test delete_user with invalid parameters."""
+        # Test with empty string
+        with self.assertRaises(ValueError) as context:
+            self.client.delete_user("")
+        self.assertIn(
+            "User ID is required and must be a string", str(context.exception)
+        )
+
+        # Test with None
+        with self.assertRaises(ValueError) as context:
+            self.client.delete_user(None)
+        self.assertIn(
+            "User ID is required and must be a string", str(context.exception)
+        )
+
+        # Test with wrong type
+        with self.assertRaises(ValueError) as context:
+            self.client.delete_user(123)
+        self.assertIn(
+            "User ID is required and must be a string", str(context.exception)
+        )
+
+    def test_delete_user_server_api_error(self):
+        """Test delete_user when ServerAPI raises an error."""
+        uid = "test_user_123"
+        mock_token_data = {"token": "mock_token", "expires_at": 1234567890}
+
+        with patch.object(
+            self.client, "generate_token", return_value=mock_token_data
+        ), patch("contactsmanager.client.ServerAPI") as mock_server_api_class:
+
+            mock_server_api = mock_server_api_class.return_value
+            mock_server_api.delete_user.side_effect = ServerAPIError("API Error", 404)
+
+            with self.assertRaises(ServerAPIError):
+                self.client.delete_user(uid)
 
     def test_set_webhook_secret(self):
         """Test setting webhook secret."""
@@ -202,15 +370,11 @@ class TestContactsManagerClient(unittest.TestCase):
         """Test verify_webhook_signature with bytes payload."""
         secret = "webhook_secret"
         self.client.set_webhook_secret(secret)
-        payload_dict = {"id": "123", "event": "user.new"}
-        payload_bytes = json.dumps(payload_dict).encode("utf-8")
+        payload = b'{"id":"123","event":"user.new"}'
         timestamp = "1609459200"
 
-        # Create expected payload string after decoding
-        payload_str = payload_bytes.decode("utf-8")
-
         # Create a valid signature
-        signed_content = f"{timestamp}.{payload_str}"
+        signed_content = f"{timestamp}.{payload.decode('utf-8')}"
         expected_signature = hmac.new(
             secret.encode("utf-8"), signed_content.encode("utf-8"), hashlib.sha256
         ).hexdigest()
@@ -220,35 +384,33 @@ class TestContactsManagerClient(unittest.TestCase):
         with patch("time.time", return_value=int(timestamp) + 10):
             with patch("hmac.compare_digest", return_value=True):
                 self.assertTrue(
-                    self.client.verify_webhook_signature(
-                        payload_bytes, signature_header
-                    )
+                    self.client.verify_webhook_signature(payload, signature_header)
                 )
 
     def test_verify_webhook_signature_with_invalid_signature(self):
         """Test verify_webhook_signature with invalid signature."""
-        self.client.set_webhook_secret("webhook_secret")
+        secret = "webhook_secret"
+        self.client.set_webhook_secret(secret)
         payload = {"id": "123", "event": "user.new"}
-        timestamp = str(int(time.time()))
+        timestamp = "1609459200"
 
-        # Mock compare_digest to return False (signature doesn't match)
-        with patch("hmac.compare_digest", return_value=False):
-            signature_header = f"t={timestamp},v1=invalid_signature"
-            self.assertFalse(
-                self.client.verify_webhook_signature(payload, signature_header)
-            )
+        signature_header = f"t={timestamp},v1=invalid_signature"
+
+        with patch("time.time", return_value=int(timestamp) + 10):
+            with patch("hmac.compare_digest", return_value=False):
+                self.assertFalse(
+                    self.client.verify_webhook_signature(payload, signature_header)
+                )
 
     def test_verify_webhook_signature_error_handling(self):
-        """Test error handling in verify_webhook_signature."""
-        self.client.set_webhook_secret("webhook_secret")
-        payload = {"id": "123", "event": "user.new"}
-        timestamp = str(int(time.time()))
-        signature_header = f"t={timestamp},v1=signature"
+        """Test verify_webhook_signature error handling."""
+        secret = "webhook_secret"
+        self.client.set_webhook_secret(secret)
 
-        # Mock hmac.new to raise an exception
-        with patch("hmac.new", side_effect=Exception("Test error")):
+        # Test with malformed signature that causes an exception
+        with patch("time.time", side_effect=Exception("Time error")):
             self.assertFalse(
-                self.client.verify_webhook_signature(payload, signature_header)
+                self.client.verify_webhook_signature({}, "t=123,v1=signature")
             )
 
 

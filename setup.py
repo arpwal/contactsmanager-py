@@ -26,6 +26,7 @@ setup(
     packages=find_packages(exclude=["tests*"]),
     install_requires=[
         "PyJWT>=2.0.0,<3.0.0",
+        "requests>=2.28.0,<3.0.0",
     ],
     extras_require={
         "dev": [

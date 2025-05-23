@@ -17,6 +17,9 @@ if parent_dir not in sys.path:
 from contactsmanager.integration_tests.test_api_key_validation import (
     TestApiKeyValidation,
 )
+from contactsmanager.integration_tests.test_server_api import (
+    TestServerAPI,
+)
 from contactsmanager.integration_tests.env_loader import load_env_config
 
 
@@ -36,6 +39,7 @@ def run_tests():
     # Add test cases using TestLoader
     loader = unittest.TestLoader()
     suite.addTest(loader.loadTestsFromTestCase(TestApiKeyValidation))
+    suite.addTest(loader.loadTestsFromTestCase(TestServerAPI))
 
     # Run the tests
     runner = unittest.TextTestRunner(verbosity=2)
