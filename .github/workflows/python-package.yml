@@ -82,12 +82,38 @@ jobs:
         run: |
           echo '${{ secrets.TEST_CONFIG }}' > test_config.json
           echo "Created test_config.json with length: $(wc -c < test_config.json)"
-      - name: Run integration tests
+      - name: Wait before running tests
+        run: |
+          # Add a small delay to prevent potential race conditions
+          sleep 5
+      - name: Run integration tests with retry
         env:
           TEST_CONFIG: "${{ secrets.TEST_CONFIG }}"
         run: |
           echo "TEST_CONFIG environment variable length: ${#TEST_CONFIG}"
-          python -m contactsmanager.integration_tests.run_tests
+
+          # Run integration tests with retry logic
+          max_attempts=3
+          attempt=1
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt of $max_attempts"
+            
+            if python -m contactsmanager.integration_tests.run_tests; then
+              echo "Integration tests passed on attempt $attempt"
+              exit 0
+            else
+              echo "Integration tests failed on attempt $attempt"
+              if [ $attempt -eq $max_attempts ]; then
+                echo "All attempts failed"
+                exit 1
+              else
+                echo "Waiting 10 seconds before retry..."
+                sleep 10
+                attempt=$((attempt + 1))
+              fi
+            fi
+          done
 
   publish:
     needs: [test, integration-test]

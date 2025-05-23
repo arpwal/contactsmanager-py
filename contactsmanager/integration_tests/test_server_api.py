@@ -1,12 +1,36 @@
 import unittest
-import httpx
 import time
+import uuid
+import httpx
 from pathlib import Path
 
 from contactsmanager import ContactsManagerClient
 from contactsmanager.types import UserInfo, DeviceInfo
 from contactsmanager.server_api import ServerAPIError
 from contactsmanager.integration_tests.env_loader import load_env_config
+
+
+def generate_unique_id(prefix: str = "") -> str:
+    """Generate a unique ID using UUID and timestamp to prevent collisions."""
+    timestamp = int(time.time())
+    unique_part = str(uuid.uuid4())[:8]  # Use first 8 chars of UUID
+    return (
+        f"{prefix}_{timestamp}_{unique_part}"
+        if prefix
+        else f"{timestamp}_{unique_part}"
+    )
+
+
+def generate_unique_email(prefix: str = "test") -> str:
+    """Generate a unique email address."""
+    unique_id = generate_unique_id()
+    return f"{prefix}_{unique_id}@example.com"
+
+
+def generate_unique_phone() -> str:
+    """Generate a unique phone number."""
+    timestamp = int(time.time())
+    return f"+1555{timestamp % 10000:04d}"
 
 
 class TestServerAPI(unittest.TestCase):
@@ -43,12 +67,12 @@ class TestServerAPI(unittest.TestCase):
     def test_create_user_with_email(self):
         """Test creating a user with email through the server API."""
         # Create unique user ID for this test
-        user_id = f"test_user_email_{int(time.time())}"
+        user_id = generate_unique_id("test_user_email")
 
         user_info = UserInfo(
             user_id=user_id,
             full_name="Test User Email",
-            email=f"test_{int(time.time())}@example.com",
+            email=generate_unique_email("test"),
         )
 
         device_info = DeviceInfo(
@@ -76,12 +100,12 @@ class TestServerAPI(unittest.TestCase):
     def test_create_user_with_phone(self):
         """Test creating a user with phone through the server API."""
         # Create unique user ID for this test
-        user_id = f"test_user_phone_{int(time.time())}"
+        user_id = generate_unique_id("test_user_phone")
 
         user_info = UserInfo(
             user_id=user_id,
             full_name="Test User Phone",
-            phone=f"+1555{int(time.time()) % 10000:04d}",
+            phone=generate_unique_phone(),
         )
 
         device_info = DeviceInfo(device_type="mobile", os="iOS", app_version="2.0.0")
@@ -104,13 +128,13 @@ class TestServerAPI(unittest.TestCase):
     def test_create_user_with_both_email_and_phone(self):
         """Test creating a user with both email and phone."""
         # Create unique user ID for this test
-        user_id = f"test_user_both_{int(time.time())}"
+        user_id = generate_unique_id("test_user_both")
 
         user_info = UserInfo(
             user_id=user_id,
             full_name="Test User Both",
-            email=f"test_both_{int(time.time())}@example.com",
-            phone=f"+1555{int(time.time()) % 10000:04d}",
+            email=generate_unique_email("test_both"),
+            phone=generate_unique_phone(),
             avatar_url="https://example.com/avatar.jpg",
             metadata={"test_type": "integration", "timestamp": int(time.time())},
         )
@@ -135,13 +159,13 @@ class TestServerAPI(unittest.TestCase):
     def test_update_existing_user(self):
         """Test updating an existing user."""
         # Create unique user ID for this test
-        user_id = f"test_user_update_{int(time.time())}"
+        user_id = generate_unique_id("test_user_update")
 
         # First, create a user
         user_info_create = UserInfo(
             user_id=user_id,
             full_name="Original Name",
-            email=f"original_{int(time.time())}@example.com",
+            email=generate_unique_email("original"),
         )
 
         try:
@@ -154,8 +178,8 @@ class TestServerAPI(unittest.TestCase):
             user_info_update = UserInfo(
                 user_id=user_id,
                 full_name="Updated Name",
-                email=f"updated_{int(time.time())}@example.com",
-                phone=f"+1555{int(time.time()) % 10000:04d}",
+                email=generate_unique_email("updated"),
+                phone=generate_unique_phone(),
             )
 
             # Update user (should not create a new one)
@@ -171,13 +195,13 @@ class TestServerAPI(unittest.TestCase):
     def test_delete_user(self):
         """Test deleting a user through the server API."""
         # Create unique user ID for this test
-        user_id = f"test_user_delete_{int(time.time())}"
+        user_id = generate_unique_id("test_user_delete")
 
         # First, create a user to delete
         user_info = UserInfo(
             user_id=user_id,
             full_name="User To Delete",
-            email=f"delete_{int(time.time())}@example.com",
+            email=generate_unique_email("delete"),
         )
 
         try:
@@ -199,7 +223,7 @@ class TestServerAPI(unittest.TestCase):
     def test_delete_nonexistent_user(self):
         """Test deleting a user that doesn't exist."""
         # Use a user ID that definitely doesn't exist
-        user_id = f"nonexistent_user_{int(time.time())}"
+        user_id = generate_unique_id("nonexistent_user")
 
         try:
             # Attempt to delete non-existent user
@@ -214,12 +238,12 @@ class TestServerAPI(unittest.TestCase):
     def test_create_user_with_custom_expiry(self):
         """Test creating a user with custom token expiry."""
         # Create unique user ID for this test
-        user_id = f"test_user_expiry_{int(time.time())}"
+        user_id = generate_unique_id("test_user_expiry")
 
         user_info = UserInfo(
             user_id=user_id,
             full_name="Test User Expiry",
-            email=f"expiry_{int(time.time())}@example.com",
+            email=generate_unique_email("expiry"),
         )
 
         # Use 1 hour expiry instead of default 24 hours
@@ -248,7 +272,7 @@ class TestServerAPI(unittest.TestCase):
             self.skipTest("Missing api_base_url in test config")
 
         # Create unique user ID for this test
-        user_id = f"test_direct_api_{int(time.time())}"
+        user_id = generate_unique_id("test_direct_api")
 
         # Generate a token for authentication
         token_data = self.client.generate_token(user_id=user_id)
@@ -261,7 +285,7 @@ class TestServerAPI(unittest.TestCase):
         user_info_dict = {
             "userId": user_id,
             "fullName": "Direct API Test User",
-            "email": f"direct_{int(time.time())}@example.com",
+            "email": generate_unique_email("direct"),
         }
 
         with httpx.Client() as http_client:
